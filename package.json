@@ -15,7 +15,9 @@
     "koishi",
     "plugin"
   ],
-  "devDependencies": {},
+  "devDependencies": {
+    "koishi-plugin-monetary": "^0.1.3"
+  },
   "peerDependencies": {
     "koishi": "4.18.11"
   }
