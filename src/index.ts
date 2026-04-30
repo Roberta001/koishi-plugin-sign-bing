@@ -101,6 +101,7 @@ export function apply(ctx: Context, config: Config) {
   }
 
   ctx.command('sign', '每日签到')
+    .example('sign')
     .alias('签到')
     .userFields(['id', 'signLastDate', 'signTotal', 'signContinuous', 'favorability'])
     .action(async ({ session }) => {
