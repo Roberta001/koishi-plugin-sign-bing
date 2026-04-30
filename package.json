@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-sign-bing",
   "description": "签到，并且发一张今日bing壁纸",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
