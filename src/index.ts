@@ -7,6 +7,7 @@ export const name = 'sign-bing'
 export const inject = ['database', 'monetary', 'http']
 
 export interface Config {
+  enableQQNativeMarkdown: boolean
   botName: string
   rewardMin: number
   rewardMax: number
@@ -15,6 +16,7 @@ export interface Config {
 }
 
 export const Config: Schema<Config> = Schema.object({
+  enableQQNativeMarkdown: Schema.boolean().default(false).description('是否在 QQ 平台启用原生 Markdown 格式发送并附加快捷签到按钮'),
   botName: Schema.string().default('天气酱').description('机器人的自称（会显示在签到文案中）'),
   rewardMin: Schema.number().default(30).description('基础签到货币奖励随机下限'),
   rewardMax: Schema.number().default(80).description('基础签到货币奖励随机上限'),
@@ -25,6 +27,20 @@ export const Config: Schema<Config> = Schema.object({
     red: 3,
   }).description('不同平台的奖励倍率，未配置的平台默认为 1 倍（例如：qq 配置为 3，则QQ端签到获得3倍奖励）'),
 })
+
+interface QQSendMessageRequest {
+  content: string
+  msg_type: 2
+  msg_id?: string
+  msg_seq?: number
+  markdown: { content: string }
+  keyboard?: any
+}
+
+interface QQSessionBridge {
+  sendMessage(channelId: string, data: QQSendMessageRequest): Promise<unknown>
+  sendPrivateMessage(openid: string, data: QQSendMessageRequest): Promise<unknown>
+}
 
 // 扩展 Koishi 的 User 表结构
 declare module 'koishi' {
@@ -48,6 +64,42 @@ export function apply(ctx: Context, config: Config) {
   // 随机数辅助函数
   const random = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min
 
+  const sendQQMarkdown = async (session: any, title: string, md: string) => {
+    const keyboard = {
+      content: {
+        rows: [{
+          buttons: [
+            { id: '1', render_data: { label: '我也要签到!', style: 1 }, action: { type: 2, permission: { type: 2 }, data: '/签到', enter: true } }
+          ]
+        }]
+      }
+    };
+    const internal = session.bot?.internal as QQSessionBridge | undefined;
+    if (internal) {
+      session['seq'] = session['seq'] || 0;
+      const msgSeq = ++session['seq'];
+      const payload: QQSendMessageRequest = {
+        content: title,
+        msg_type: 2,
+        msg_id: session.messageId,
+        msg_seq: msgSeq,
+        markdown: { content: md },
+        keyboard: keyboard
+      };
+      try {
+        if (session.isDirect) {
+          await internal.sendPrivateMessage(session.channelId, payload);
+        } else {
+          await internal.sendMessage(session.channelId, payload);
+        }
+        return true;
+      } catch (e) {
+        ctx.logger('sign-bing').warn('QQ native markdown send failed, fallback to text', e);
+      }
+    }
+    return false;
+  }
+
   ctx.command('sign', '每日签到')
     .alias('签到')
     .userFields(['id', 'signLastDate', 'signTotal', 'signContinuous', 'favorability'])
@@ -61,6 +113,11 @@ export function apply(ctx: Context, config: Config) {
       const yesterdayStr = yesterdayTime.toISOString().split('T')[0]
 
       if (user.signLastDate === todayStr) {
+        if (config.enableQQNativeMarkdown && session.platform === 'qq') {
+          const md = `### 📅 签到提示\n\n> 你今天已经和${h.escape(config.botName)}见过面啦，明天再来签到吧！`;
+          const sent = await sendQQMarkdown(session, '签到提示', md);
+          if (sent) return '';
+        }
         return `你今天已经和${config.botName}见过面啦，明天再来签到吧！`
       }
 
@@ -149,6 +206,25 @@ export function apply(ctx: Context, config: Config) {
       if (bingImage) {
         msgList.push(`\n[今日风景: ${bingLocation}]`)
         msgList.push(h.image(bingImage).toString())
+      }
+
+      if (config.enableQQNativeMarkdown && session.platform === 'qq') {
+        let md = `### 📅 签到结果\n\n`;
+        md += greeting.split('\n').map(line => `> ${line}`).join('\n') + `\n\n`;
+        md += `- **财运**: ${luckWealth}点\n`;
+        md += `- **事业运**: ${luckCareer}点\n`;
+        md += `- **桃花运**: ${luckRomance}点\n`;
+        md += `- **好感增加**: ${favorAdd}点\n`;
+        md += `- **当前好感**: ${user.favorability}点\n`;
+        md += `- **获得奖励**: ${reward} 货币\n\n`;
+        if (bingImage) {
+          md += `> 🖼️ 今日风景: ${bingLocation}\n`;
+          md += `![${bingLocation} #1920px #1080px](${bingImage})\n\n`;
+        }
+        md += tail.split('\n').map(line => `> ${line}`).join('\n');
+
+        const sent = await sendQQMarkdown(session, '签到结果', md);
+        if (sent) return '';
       }
 
       return msgList.join('\n')

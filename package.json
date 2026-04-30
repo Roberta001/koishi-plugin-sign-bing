@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-sign-bing",
   "description": "签到，并且发一张今日bing壁纸",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -9,7 +9,6 @@
     "dist"
   ],
   "license": "MIT",
-  "scripts": {},
   "keywords": [
     "chatbot",
     "koishi",
