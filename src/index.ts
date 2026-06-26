@@ -1,5 +1,7 @@
 import { Context, Schema, h } from 'koishi'
 import {} from 'koishi-plugin-monetary'
+import zhCN from './locales/zh-CN.yml'
+import enUS from './locales/en-US.yml'
 
 export const name = 'sign-bing'
 
@@ -53,6 +55,9 @@ declare module 'koishi' {
 }
 
 export function apply(ctx: Context, config: Config) {
+  ctx.i18n.define('zh-CN', zhCN)
+  ctx.i18n.define('en-US', enUS)
+
   // 注册数据库字段
   ctx.model.extend('user', {
     signLastDate: 'string',
@@ -64,12 +69,12 @@ export function apply(ctx: Context, config: Config) {
   // 随机数辅助函数
   const random = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min
 
-  const sendQQMarkdown = async (session: any, title: string, md: string) => {
+  const sendQQMarkdown = async (session: any, title: string, md: string, buttonLabel: string) => {
     const keyboard = {
       content: {
         rows: [{
           buttons: [
-            { id: '1', render_data: { label: '我也要签到!', style: 1 }, action: { type: 2, permission: { type: 2 }, data: '/签到', enter: true } }
+            { id: '1', render_data: { label: buttonLabel, style: 1 }, action: { type: 2, permission: { type: 2 }, data: '/sign', enter: true } }
           ]
         }]
       }
@@ -100,7 +105,7 @@ export function apply(ctx: Context, config: Config) {
     return false;
   }
 
-  ctx.command('sign', '每日签到')
+  ctx.command('sign')
     .example('sign')
     .alias('签到')
     .userFields(['id', 'signLastDate', 'signTotal', 'signContinuous', 'favorability'])
@@ -115,11 +120,11 @@ export function apply(ctx: Context, config: Config) {
 
       if (user.signLastDate === todayStr) {
         if (config.enableQQNativeMarkdown && session.platform === 'qq') {
-          const md = `### 📅 签到提示\n\n> 你今天已经和${h.escape(config.botName)}见过面啦，明天再来签到吧！`;
-          const sent = await sendQQMarkdown(session, '签到提示', md);
+          const md = session.text('.qqAlreadySignedMarkdown', { botName: h.escape(config.botName) })
+          const sent = await sendQQMarkdown(session, session.text('.qqTitlePrompt'), md, session.text('.qqButtonSign'))
           if (sent) return '';
         }
-        return `你今天已经和${config.botName}见过面啦，明天再来签到吧！`
+        return session.text('.alreadySigned', { botName: config.botName })
       }
 
       // 签到状态判断
@@ -139,12 +144,19 @@ export function apply(ctx: Context, config: Config) {
       user.signTotal += 1
       user.signLastDate = todayStr
 
-      // 计算随机运势与好感
-      const luckWealth = random(1, 100)
-      const luckCareer = random(1, 100)
-      const luckRomance = random(1, 100)
+      // 计算好感
       const favorAdd = random(2, 6)
       user.favorability += favorAdd
+
+      const [todayUsers, rankedUsers] = await Promise.all([
+        ctx.database.get('user', { signLastDate: todayStr }, ['id']),
+        ctx.database.get('user', {}, { fields: ['id', 'signTotal', 'signContinuous'], sort: { signTotal: 'desc', id: 'asc' } }),
+      ])
+      const todayOrder = todayUsers.length
+      const totalRank = rankedUsers.findIndex(item => item.id === user.id) + 1
+      const continuousRank = [...rankedUsers]
+        .sort((a, b) => b.signContinuous - a.signContinuous || a.id - b.id)
+        .findIndex(item => item.id === user.id) + 1
 
       // 货币奖励发放
       const platform = session.platform
@@ -181,50 +193,50 @@ export function apply(ctx: Context, config: Config) {
       const userName = h.escape(session.author?.name || session.username || '你')
 
       if (isFirstTime) {
-        greeting = `“初次见面！很高兴认识你呀～”\n“以后每天都要来找我玩哦！”`
-        tail = `&lt;${userName}&gt;与${botName}相遇了！这是你们相遇的第1天，期待明天的再会呢\n&lt;${userName}&gt;总共陪伴了${botName} 1 个日出与日落～`
+        greeting = session.text('.greeting.first')
+        tail = session.text('.tail.first', { userName, botName })
       } else if (isBroken) {
-        greeting = `“呜…好几天没看到你了，我还以为你把我忘了呢…”\n“下次不许再这样无故失踪啦！”`
-        tail = `&lt;${userName}&gt;前几天似乎忘记了什么…总之重新开始连续陪着${botName}度过了 1 天，希望明天不要再忘记了吧…\n&lt;${userName}&gt;总共陪伴了${botName} ${user.signTotal} 个日出与日落～`
+        greeting = session.text('.greeting.broken')
+        tail = session.text('.tail.broken', { userName, botName, signTotal: user.signTotal })
       } else {
-        greeting = `“又见面啦！你真的很守信呢～”\n“明天、后天、大后天，也要一直在这里碰面哦！”`
-        tail = `&lt;${userName}&gt;已经陪着${botName}连续度过了 ${user.signContinuous} 天，期待明天的相遇呢\n&lt;${userName}&gt;总共陪伴了${botName} ${user.signTotal} 个日出与日落～`
+        greeting = session.text('.greeting.continuous')
+        tail = session.text('.tail.continuous', { userName, botName, signContinuous: user.signContinuous, signTotal: user.signTotal })
       }
 
       const msgList = [
         greeting,
-        '*少女祈祷中…*',
-        `『财运』: ${luckWealth}点`,
-        `『事业运』: ${luckCareer}点`,
-        `『桃花运』: ${luckRomance}点`,
-        `『好感增加』: ${favorAdd}点`,
-        `『当前好感』: ${user.favorability}点`,
-        `『获得奖励』: ${reward} 货币`,
+        session.text('.praying'),
+        session.text('.signOrder', { value: todayOrder }),
+        session.text('.totalRank', { value: totalRank }),
+        session.text('.continuousRank', { value: continuousRank }),
+        session.text('.favorAdd', { value: favorAdd }),
+        session.text('.favorCurrent', { value: user.favorability }),
+        session.text('.reward', { reward, currency: config.currency }),
         '',
         tail
       ]
 
       if (bingImage) {
-        msgList.push(`\n[今日风景: ${bingLocation}]`)
+        msgList.push(`\n${session.text('.scenery', { location: bingLocation })}`)
         msgList.push(h.image(bingImage).toString())
       }
 
       if (config.enableQQNativeMarkdown && session.platform === 'qq') {
-        let md = `### 📅 签到结果\n\n`;
+        let md = `### 📅 ${session.text('.qqTitleResult')}\n\n`
         md += greeting.split('\n').map(line => `> ${line}`).join('\n') + `\n\n`;
-        md += `- **财运**: ${luckWealth}点\n`;
-        md += `- **事业运**: ${luckCareer}点\n`;
-        md += `- **桃花运**: ${luckRomance}点\n`;
-        md += `- **好感增加**: ${favorAdd}点\n`;
-        md += `- **当前好感**: ${user.favorability}点\n`;
-        md += `- **获得奖励**: ${reward} 货币\n\n`;
+        md += `- ${session.text('.signOrder', { value: todayOrder })}\n`;
+        md += `- ${session.text('.totalRank', { value: totalRank })}\n`;
+        md += `- ${session.text('.continuousRank', { value: continuousRank })}\n`;
+        md += `- ${session.text('.favorAdd', { value: favorAdd })}\n`;
+        md += `- ${session.text('.favorCurrent', { value: user.favorability })}\n`;
+        md += `- ${session.text('.reward', { reward, currency: config.currency })}\n\n`;
         if (bingImage) {
-          md += `> 🖼️ 今日风景: ${bingLocation}\n`;
+          md += `> ${session.text('.qqScenery', { location: bingLocation })}\n`;
           md += `![${bingLocation} #1920px #1080px](${bingImage})\n\n`;
         }
         md += tail.split('\n').map(line => `> ${line}`).join('\n');
 
-        const sent = await sendQQMarkdown(session, '签到结果', md);
+        const sent = await sendQQMarkdown(session, session.text('.qqTitleResult'), md, session.text('.qqButtonSign'))
         if (sent) return '';
       }
 

@@ -1,0 +1,41 @@
+commands:
+  sign:
+    description: 每日签到
+    messages:
+      alreadySigned: 你今天已经和{botName}见过面啦，明天再来签到吧！
+      qqTitlePrompt: 签到提示
+      qqTitleResult: 签到结果
+      qqButtonSign: 我也要签到!
+      qqAlreadySignedMarkdown: |-
+        ### 📅 签到提示
+
+        > 你今天已经和{botName}见过面啦，明天再来签到吧！
+      praying: '*少女祈祷中...*'
+      signOrder: '『今日签到』: 第 {value} 位'
+      totalRank: '『累计签到排行』: 第 {value} 名'
+      continuousRank: '『连续签到排行』: 第 {value} 名'
+      favorAdd: '『好感增加』: {value}点'
+      favorCurrent: '『当前好感』: {value}点'
+      reward: '『获得奖励』: {reward} {currency}'
+      scenery: '[今日风景: {location}]'
+      qqScenery: '🖼️ 今日风景: {location}'
+      greeting:
+        first: |-
+          “初次见面！很高兴认识你呀～”
+          “以后每天都要来找我玩哦！”
+        broken: |-
+          “呜...好几天没看到你了，我还以为你把我忘了呢...”
+          “下次不许再这样无故失踪啦！”
+        continuous: |-
+          “又见面啦！你真的很守信呢～”
+          “明天、后天、大后天，也要一直在这里碰面哦！”
+      tail:
+        first: |-
+          &lt;{userName}&gt;与{botName}相遇了！这是你们相遇的第1天，期待明天的再会呢
+          &lt;{userName}&gt;总共陪伴了{botName} 1 个日出与日落～
+        broken: |-
+          &lt;{userName}&gt;前几天似乎忘记了什么...总之重新开始连续陪着{botName}度过了 1 天，希望明天不要再忘记了吧...
+          &lt;{userName}&gt;总共陪伴了{botName} {signTotal} 个日出与日落～
+        continuous: |-
+          &lt;{userName}&gt;已经陪着{botName}连续度过了 {signContinuous} 天，期待明天的相遇呢
+          &lt;{userName}&gt;总共陪伴了{botName} {signTotal} 个日出与日落～

@@ -1,0 +1,41 @@
+commands:
+  sign:
+    description: Daily sign-in
+    messages:
+      alreadySigned: You have already checked in with {botName} today. Come back tomorrow!
+      qqTitlePrompt: Check-in Notice
+      qqTitleResult: Check-in Result
+      qqButtonSign: Check in too!
+      qqAlreadySignedMarkdown: |-
+        ### 📅 Check-in Notice
+
+        > You have already checked in with {botName} today. Come back tomorrow!
+      praying: '*The girl is praying...*'
+      signOrder: 'Today''s Order: #{value}'
+      totalRank: 'Total Check-in Rank: #{value}'
+      continuousRank: 'Streak Rank: #{value}'
+      favorAdd: 'Favor Gained: {value}'
+      favorCurrent: 'Current Favor: {value}'
+      reward: 'Reward Received: {reward} {currency}'
+      scenery: '[Today''s View: {location}]'
+      qqScenery: '🖼️ Today''s View: {location}'
+      greeting:
+        first: |-
+          "Nice to meet you for the first time!"
+          "Come and see me every day from now on!"
+        broken: |-
+          "I haven't seen you for days... I thought you forgot me..."
+          "Don't disappear like that again, okay?"
+        continuous: |-
+          "We meet again! You really keep your promises."
+          "Tomorrow, the day after, and the day after that, let's keep meeting here!"
+      tail:
+        first: |-
+          &lt;{userName}&gt; met {botName} for the first time! This is day 1 of your meeting. Looking forward to tomorrow too.
+          &lt;{userName}&gt; has spent 1 sunrise and sunset with {botName} in total.
+        broken: |-
+          &lt;{userName}&gt; seems to have forgotten something a few days ago... Anyway, you have started over and stayed with {botName} for 1 day continuously. Please do not forget again tomorrow...
+          &lt;{userName}&gt; has spent {signTotal} sunrises and sunsets with {botName} in total.
+        continuous: |-
+          &lt;{userName}&gt; has been with {botName} for {signContinuous} consecutive days. Looking forward to meeting again tomorrow.
+          &lt;{userName}&gt; has spent {signTotal} sunrises and sunsets with {botName} in total.
